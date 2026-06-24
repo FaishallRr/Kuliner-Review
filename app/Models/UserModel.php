@@ -23,6 +23,8 @@ class UserModel extends Model
         'full_name',
         'role',
         'avatar',
+        'api_token',
+        'api_token_expires_at',
     ];
 
     protected bool $allowEmptyInserts = false;
@@ -80,6 +82,40 @@ class UserModel extends Model
         );
 
         return $data;
+    }
+
+    /**
+     * Set API token (store hashed token) and expiry for a user.
+     */
+    public function setApiToken(int $userId, string $rawToken, string $expiresAt): bool
+    {
+        $hash = password_hash($rawToken, PASSWORD_DEFAULT);
+
+        return $this->update($userId, [
+            'api_token' => $hash,
+            'api_token_expires_at' => $expiresAt,
+        ]);
+    }
+
+    /**
+     * Verify a raw API token and return the user if valid.
+     */
+    public function verifyApiToken(string $rawToken): ?array
+    {
+        $now = date('Y-m-d H:i:s');
+
+        // only consider users with a non-null token and not expired
+        $candidates = $this->where('api_token IS NOT NULL', null, false)
+            ->where('api_token_expires_at >=', $now)
+            ->findAll();
+
+        foreach ($candidates as $user) {
+            if (! empty($user['api_token']) && password_verify($rawToken, $user['api_token'])) {
+                return $user;
+            }
+        }
+
+        return null;
     }
 
     /**

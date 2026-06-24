@@ -35,13 +35,22 @@ class Home extends BaseController
      */
     public function serveUpload(string $filename)
     {
-        $path = WRITEPATH . 'uploads/' . $filename;
+        // sanitize filename to prevent path traversal
+        $safe = basename($filename);
+        $allowedExt = ['png', 'jpg', 'jpeg', 'webp', 'gif', 'svg'];
+        $ext = strtolower(pathinfo($safe, PATHINFO_EXTENSION));
+
+        if (! in_array($ext, $allowedExt, true)) {
+            throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound();
+        }
+
+        $path = WRITEPATH . 'uploads/' . $safe;
 
         if (! file_exists($path)) {
             throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound();
         }
 
-        $mimeType = mime_content_type($path);
+        $mimeType = mime_content_type($path) ?: 'application/octet-stream';
         return $this->response->setHeader('Content-Type', $mimeType)->setBody(file_get_contents($path));
     }
 }

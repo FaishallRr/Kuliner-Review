@@ -198,4 +198,17 @@ class PlaceModel extends Model
 
         return $stats;
     }
+
+    /**
+     * Ambil daftar tag untuk sebuah place.
+     */
+    public function getTags(int $placeId): array
+    {
+        return $this->db->table('place_tags')
+            ->select('tags.id, tags.name, tags.slug')
+            ->join('tags', 'tags.id = place_tags.tag_id')
+            ->where('place_tags.place_id', $placeId)
+            ->get()
+            ->getResultArray();
+    }
 }

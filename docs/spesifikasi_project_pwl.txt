@@ -1,0 +1,298 @@
+Spesifikasi Project -- Pemrograman Web Lanjut | CodeIgniter 4
+SPESIFIKASI PROJECT
+Pemrograman Web Lanjut
+PROJECT 1 Sistem Pemesanan Layanan (Service Booking) PROJECT 2 Lokasi Kuliner & Review Jajanan
+PROJECT 3 Sistem Informasi Manajemen Perpustakaan Digital
+Dilengkapi Rubrik Penilaian & ERD Database
+
+Universitas Dian Nuswantoro
+
+Halaman 1
+
+Spesifikasi Project -- Pemrograman Web Lanjut | CodeIgniter 4
+PROJECT 1 -- SISTEM PEMESANAN LAYANAN (SERVICE BOOKING)
+
+A. Deskripsi Project
+Sistem pemesanan layanan berbasis web yang memungkinkan pelanggan memesan jasa (bengkel, salon, klinik, laundry, dll) secara online. Dilengkapi dengan manajemen jadwal, konfirmasi booking, pembayaran via payment gateway (Midtrans Sandbox), dan notifikasi status.
+
+B. Tech Stack & API Eksternal
+· Framework: CodeIgniter 4 · Database: MySQL (via Migration & Seeder) · Payment Gateway: Midtrans Sandbox (free tier) -- https://sandbox.midtrans.com · Notifikasi: Email via PHPMailer + SMTP Gmail (free) · Opsional Webservice Client: RajaOngkir API (free tier) untuk estimasi ongkir jika ada pengiriman
+produk, atau Google Calendar API untuk sinkronisasi jadwal
+
+C. Fitur & Requirement Fungsional
+Role: Admin · Kelola jenis layanan (CRUD: nama, deskripsi, harga, durasi, foto) · Kelola jadwal tersedia (tanggal, slot waktu, kapasitas) · Lihat semua booking (filter by status, tanggal, layanan) · Konfirmasi atau tolak booking · Kelola data teknisi/staff · Dashboard: statistik booking, pendapatan, layanan terpopuler · Manajemen user (aktif/nonaktif)
+Role: Staff / Teknisi · Lihat jadwal tugas harian · Update status pengerjaan (proses, selesai) · Lihat riwayat pekerjaan pribadi
+Role: Pelanggan · Register & login · Browse layanan yang tersedia · Pilih layanan, tanggal, dan slot waktu · Isi form booking (keterangan/catatan tambahan) · Pembayaran via Midtrans (transfer bank, QRIS, GoPay sandbox) · Lihat riwayat booking dan status pembayaran · Batalkan booking (jika belum dikonfirmasi) · Beri ulasan & rating setelah layanan selesai
+Fitur Sistem · Filter proteksi route per role menggunakan CI4 Filter · Webhook Midtrans untuk update status pembayaran otomatis · Notifikasi email: konfirmasi booking, reminder H-1, update status · Upload foto untuk layanan dan bukti pengerjaan · API Endpoint: GET /api/services (daftar layanan publik), GET /api/booking-status/{id}
+
+Universitas Dian Nuswantoro
+
+Halaman 2
+
+Spesifikasi Project -- Pemrograman Web Lanjut | CodeIgniter 4
+· Pagination pada daftar booking dan riwayat
+D. Alur Pembayaran Midtrans
+· 1. Pelanggan klik "Bayar"  sistem buat transaksi ke Midtrans API · 2. Midtrans kembalikan snap_token · 3. Frontend tampilkan popup Midtrans (JavaScript snap.pay) · 4. Pelanggan pilih metode dan bayar (mode sandbox) · 5. Midtrans kirim webhook notification ke /api/payment/callback · 6. Sistem update status payment dan booking · 7. Sistem kirim email konfirmasi ke pelanggan
+
+Universitas Dian Nuswantoro
+
+Halaman 3
+
+Spesifikasi Project -- Pemrograman Web Lanjut | CodeIgniter 4
+PROJECT 2 -- LOKASI KULINER & REVIEW JAJANAN
+
+A. Deskripsi Project
+Platform berbasis web untuk menemukan, menambahkan, dan mengulas tempat makan/jajanan di sekitar kampus atau area tertentu. Dilengkapi dengan geocoding otomatis, filter berdasarkan kategori & tag, dan sistem rating. Data lokasi terintegrasi dengan OpenStreetMap Nominatim API (gratis, unlimited).
+
+B. Tech Stack & API Eksternal
+· Framework: CodeIgniter 4 · Database: MySQL (via Migration & Seeder) · Geocoding API: OpenStreetMap Nominatim (free, unlimited) -- https://nominatim.openstreetmap.org · Map Display: Leaflet.js (open source, gratis) untuk tampilkan peta interaktif · Opsional: Foursquare Places API free tier atau Overpass API (OSM) untuk data POI tambahan · Upload: foto tempat makan dengan auto-resize menggunakan CI4 Image Library
+
+C. Fitur & Requirement Fungsional
+Role: Admin · Kelola kategori (warteg, kafe, street food, minuman, dll) · Kelola tag (halal, murah, AC, WiFi, parkir, dll) · Moderasi tempat kuliner (approve/reject submission dari user) · Moderasi review (hapus review yang tidak pantas) · Dashboard: statistik tempat, review, user aktif, rating tertinggi · Kelola data kuliner langsung (CRUD penuh)
+Role: Kontributor (User Login) · Submit tempat makan baru (nama, alamat, deskripsi, kategori, tag, foto) · Geocoding otomatis: sistem auto-fetch koordinat dari Nominatim berdasarkan alamat · Tulis review dan beri rating (1-5 bintang) · Edit review sendiri (dalam 24 jam) · Upload hingga 3 foto per tempat · Simpan tempat favorit ke daftar pribadi · Tandai tempat sebagai "tutup permanen" (untuk divalidasi admin)
+Role: Pengunjung (Tanpa Login) · Browse daftar kuliner dengan filter (kategori, tag, rating, jarak) · Lihat detail tempat, foto, peta lokasi (Leaflet) · Baca review dari kontributor · Cari berdasarkan nama atau alamat
+Fitur Sistem · Integrasi Nominatim: otomatis convert alamat  lat/long saat submit tempat · Peta interaktif per tempat menggunakan Leaflet.js + tile OSM · Perhitungan rata-rata rating otomatis saat ada review baru · Webservice Server: GET /api/kuliner?lat=x&lng=y&radius=km (untuk poster/display kampus) · Filter route dengan CI4 Filter: submit dan review hanya untuk yang login
+
+Universitas Dian Nuswantoro
+
+Halaman 4
+
+Spesifikasi Project -- Pemrograman Web Lanjut | CodeIgniter 4
+· Upload foto dengan resize otomatis (max 800px) + thumbnail · Pagination + infinite scroll opsional · Seeder: 20+ data kuliner sekitar kampus
+D. Alur Integrasi Nominatim API
+· 1. User input alamat di form submit tempat · 2. Tombol "Cari Koordinat"  AJAX call ke controller · 3. Controller kirim GET request ke Nominatim:
+https://nominatim.openstreetmap.org/search?q=ALAMAT&format=json
+· 4. Response: array koordinat  ambil [0].lat dan [0].lon · 5. Simpan lat/lng ke database bersama data tempat · 6. Halaman detail: Leaflet.js render peta dengan marker di koordinat tersebut
+
+Universitas Dian Nuswantoro
+
+Halaman 5
+
+Spesifikasi Project -- Pemrograman Web Lanjut | CodeIgniter 4
+PROJECT 3 -- SISTEM INFORMASI MANAJEMEN PERPUSTAKAAN DIGITAL
+
+A. Deskripsi Project
+Sistem manajemen perpustakaan berbasis web yang mencakup pengelolaan koleksi buku, keanggotaan, peminjaman, pengembalian, dan denda. Dilengkapi notifikasi WhatsApp (WAHA API) dan email, integrasi Open Library API untuk auto-fill data buku, serta payment gateway (Midtrans) untuk pembayaran denda secara online.
+
+B. Tech Stack & API Eksternal
+· Framework: CodeIgniter 4 · Database: MySQL (via Migration & Seeder) · Book Metadata API: Open Library API (free, unlimited) --
+https://openlibrary.org/api/books?bibkeys=ISBN:xxx&format=json
+· Notifikasi WhatsApp: WAHA API (self-hosted atau cloud) -- kirim pesan WA ke anggota · Notifikasi Email: PHPMailer / CI4 Email Library + SMTP Gmail (free) · Payment Gateway: Midtrans Sandbox (free) -- pembayaran denda online
+
+C. Fitur & Requirement Fungsional
+Role: Admin / Pustakawan · Kelola koleksi buku (CRUD): input ISBN  auto-fetch judul, penulis, penerbit, cover dari Open Library
+API
+· Kelola eksemplar buku (kode eksemplar, kondisi, rak) · Kelola anggota (CRUD, cetak kartu anggota PDF) · Proses peminjaman dan pengembalian buku · Hitung denda otomatis berdasarkan hari keterlambatan · Tagih denda via Midtrans atau tandai lunas manual · Kirim notifikasi manual via WA atau email · Laporan: peminjaman aktif, buku terlambat, statistik bulanan · Dashboard: ringkasan stok, peminjaman aktif, denda belum dibayar
+Role: Anggota (Member) · Register & login (dengan nomor telepon untuk WA notification) · Browse dan cari koleksi buku (judul, penulis, ISBN, kategori) · Lihat detail buku dan ketersediaan eksemplar · Ajukan peminjaman online (disetujui pustakawan) · Lihat riwayat peminjaman dan status pengembalian · Bayar denda online via Midtrans · Terima notifikasi: konfirmasi peminjaman, reminder H-3 & H-1 jatuh tempo, tagihan denda
+Fitur Sistem · Auto-fill buku via Open Library API saat input ISBN · Kalkulasi denda otomatis: (tanggal kembali - tanggal jatuh tempo) × tarif/hari · Notifikasi WA otomatis: peminjaman disetujui, reminder jatuh tempo, denda · Notifikasi email: sama dengan WA sebagai backup · Payment Midtrans untuk denda, webhook update status otomatis
+
+Universitas Dian Nuswantoro
+
+Halaman 6
+
+Spesifikasi Project -- Pemrograman Web Lanjut | CodeIgniter 4
+· Filter CI4: proteksi route admin, route member, dan route publik · Webservice Server: GET /api/books, GET /api/books/{isbn}, GET /api/availability/{id} · PDF: kartu anggota, tanda terima peminjaman, laporan bulanan · Seeder: 50+ buku, 20+ anggota, riwayat peminjaman dummy · Cron job (Spark command): kirim reminder harian otomatis
+D. Alur Integrasi API & Notifikasi
+Open Library API · 1. Admin input ISBN di form tambah buku · 2. Tombol "Cari Data"  AJAX ke controller · 3. Controller fetch:
+https://openlibrary.org/api/books?bibkeys=ISBN:9780134190440&format=json&jscmd=data
+· 4. Auto-fill: judul, penulis, penerbit, tahun, cover ke form · 5. Admin verifikasi dan simpan
+Notifikasi WhatsApp via WAHA · Endpoint: POST /api/sendText ke WAHA server · Payload: { chatId: "628xxx@c.us", text: "Pesan" } · Dipanggil saat: peminjaman disetujui, H-3 jatuh tempo, H-1 jatuh tempo, denda terbentuk · Disimpan ke tabel notifications untuk audit trail
+Payment Midtrans untuk Denda · 1. Anggota klik "Bayar Denda" pada riwayat pinjam · 2. Sistem buat order ke Midtrans API  dapat snap_token · 3. Popup Midtrans muncul, anggota bayar (mode sandbox) · 4. Webhook Midtrans POST ke /api/payment/callback · 5. Sistem update status payment dan loan (fine_paid) · 6. Kirim konfirmasi WA + email ke anggota
+
+Universitas Dian Nuswantoro
+
+Halaman 7
+
+Spesifikasi Project -- Pemrograman Web Lanjut | CodeIgniter 4
+RUBRIK PENILAIAN -- BERLAKU UNTUK SEMUA PROJECT
+
+A. Komponen Penilaian
+Penilaian dilakukan berdasarkan 10 aspek dengan total bobot 100%. Setiap aspek dinilai pada skala 1­4 kemudian dikalikan bobot aspek tersebut.
+
+No
+
+Aspek Penilaian
+
+1 ­ Kurang (0­ 59)
+
+2 ­ Cukup (60­69)
+
+3 ­ Baik (70­ 84)
+
+4 ­ Sangat Baik (85­
+100)
+
+Bobot (%)
+
+Perencanaan & 1 Desain
+Database
+
+ERD tidak ada / tidak relevan
+
+ERD ada, normalisasi belum benar, relasi kurang
+
+ERD lengkap, normalisasi 2NF, relasi cukup
+
+ERD lengkap, normalisasi 3NF, relasi benar, seeder ada
+
+10%
+
+Migration
+
+Implementasi 2 Migration &
+Seeder
+
+Tidak ada migration sama sekali
+
+Migration ada tapi tidak lengkap/error
+
+Migration berjalan, seeder ada tapi minimal
+
+lengkap, seeder realistis, rollback
+
+5%
+
+berfungsi
+
+Autentikasi &
+
+3
+
+Otorisasi (Session +
+
+Filter)
+
+Tidak ada login/logout
+
+Login ada tapi filter role belum diterapkan
+
+Login, logout, 2 role berfungsi dengan filter
+
+Login, logout, multi-role, filter ketat, proteksi semua route
+
+10%
+
+BATAS PRESENTASI TENGAH SEMESTER
+
+4
+
+Fitur CRUD Utama
+
+Kurang dari 2 fitur CRUD berfungsi
+
+2-3 fitur CRUD berfungsi, validasi minim
+
+4-5 fitur CRUD + validasi input lengkap
+
+Semua CRUD + validasi + flash message + upload file
+
+15%
+
+Integrasi
+
+5
+
+Webservice Client
+
+Tidak ada integrasi API eksternal
+
+(Konsumsi API)
+
+API dipanggil tapi data tidak ditampilkan/error
+
+API berhasil diintegrasikan, data tampil di view
+
+API terintegrasi, ada error handling, data di-cache
+
+15%
+
+Webservice 6 Server (Expose
+API Endpoint)
+
+Tidak ada endpoint API
+
+Endpoint ada tapi response tidak terstruktur
+
+Endpoint GET/POST berfungsi, response JSON rapi
+
+RESTful lengkap, auth token/API key, dokumentasi endpoint
+
+15%
+
+Payment 7 Gateway &
+Notifikasi
+
+Tidak ada integrasi payment/notifikasi
+
+Salah satu (payment atau notifikasi) ada tapi belum berfungsi
+
+Payment sandbox berfungsi ATAU notifikasi berjalan
+
+Payment + konfirmasi + notifikasi (WA/email) terintegrasi
+
+15%
+
+8 UI/UX & Layout
+
+Tampilan berantakan, tidak ada layout konsisten
+
+Layout ada tapi kurang rapi, tidak responsif
+
+Layout konsisten, responsif, navigasi jelas
+
+Desain profesional, UX baik, konsisten antar halaman
+
+10%
+
+9
+
+Kualitas Kode & Struktur CI4
+
+Kode berantakan, semua di controller, tidak pakai MVC
+
+MVC ada tapi logika bisnis di controller semua
+
+MVC benar, pakai Model untuk query, route terorganisir
+
+MVC + library custom + helper + kode bersih + komentar
+
+10%
+
+Universitas Dian Nuswantoro
+
+Halaman 8
+
+Spesifikasi Project -- Pemrograman Web Lanjut | CodeIgniter 4
+
+10
+
+GitHub & Dokumentasi
+
+TOTAL BOBOT
+
+Tidak upload ke GitHub sama sekali
+
+Ada repository tapi commit hanya sekali/tidak teratur
+
+Repository rapi, minimal 10 commit bermakna, ada README
+
+Repository rapi, commit konsisten, README + ERD + cara install
+
+5% 100%
+
+B. Formula Nilai Akhir
+Nilai Akhir =  (Skor Aspek × Bobot Aspek) Contoh: Jika semua aspek mendapat nilai 3 (Baik, setara 77): Nilai = 77
+C. Ketentuan Pengumpulan
+· Dikumpulkan sebagai link GitHub repository yang sudah berisi kode lengkap · Repository harus bersifat public atau diberikan akses ke dosen · README.md minimal berisi: cara instalasi, konfigurasi .env, akun demo (admin + user), screenshot
+fitur utama
+· File .env.example wajib ada; file .env asli tidak boleh di-push · Migration dan seeder harus bisa dijalankan dengan php spark migrate --seed · Presentasi singkat 10-15 menit: demo fitur + penjelasan arsitektur
+D. Penilaian Bonus (+5 poin maks)
+· Deploy ke server/hosting live (Niagahoster, Heroku, Railway, dll): +2 · Implementasi Docker (docker-compose.yml bisa langsung jalan): +2 · Unit testing minimal 3 test case menggunakan PHPUnit CI4: +1
+E. Ketentuan Plagiarisme
+Project yang terbukti menyalin kode dari mahasiswa lain atau menggunakan project open source tanpa modifikasi signifikan akan mendapat nilai 0. Penggunaan AI tools diperbolehkan namun mahasiswa wajib mampu menjelaskan setiap baris kode yang dikumpulkan.
+
+Universitas Dian Nuswantoro
+
+Halaman 9
+
+

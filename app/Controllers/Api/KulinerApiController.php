@@ -45,6 +45,7 @@ class KulinerApiController extends ResourceController
             $distance = $this->haversine($lat, $lng, (float) $place['latitude'], (float) $place['longitude']);
             if ($distance <= $radius) {
                 $place['distance_km'] = round($distance, 2);
+                $place['image_url'] = ! empty($place['image']) ? base_url('uploads/' . $place['image']) : null;
                 $results[] = $place;
             }
         }

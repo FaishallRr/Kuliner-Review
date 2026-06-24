@@ -18,6 +18,17 @@ $routes->get('uploads/(:any)', 'Home::serveUpload/$1');
 // API endpoint (publik)
 $routes->group('api', ['namespace' => 'App\Controllers\Api'], static function ($routes) {
     $routes->get('kuliner', 'KulinerApiController::index');
+    // Public API: places listing & details
+    $routes->get('places', 'PlacesController::index');
+    $routes->get('places/(:num)', 'PlacesController::show/$1');
+
+    // Auth
+    $routes->post('auth/login', 'AuthController::login');
+    $routes->post('auth/logout', 'AuthController::logout');
+
+    // Protected write endpoints (require api token)
+    $routes->post('places', 'PlacesController::create', ['filter' => 'apiauth']);
+    $routes->post('places/(:num)/reviews', 'PlacesController::createReview/$1', ['filter' => 'apiauth']);
 });
 
 // =============================================================================
