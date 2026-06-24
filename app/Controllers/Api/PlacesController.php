@@ -21,6 +21,7 @@ class PlacesController extends ResourceController
         $model = new PlaceModel();
 
         $builder = $model->builder();
+        $builder->where('places.status', 'approved');
 
         if ($q) {
             $builder->groupStart()
@@ -65,10 +66,10 @@ class PlacesController extends ResourceController
     public function show($id = null)
     {
         $model = new PlaceModel();
-        $place = $model->find($id);
+        $place = $model->where('status', 'approved')->find($id);
 
         if (! $place) {
-            return $this->failNotFound('Place not found');
+            return $this->failNotFound('Place not found or not approved');
         }
 
         $reviewModel = new ReviewModel();

@@ -18,6 +18,7 @@ class KulinerSeeder extends Seeder
         $this->seedUsers($faker);
         $this->seedCategories();
         $this->seedTags();
+        $this->generateDummyImages();
         $this->seedPlaces($faker);
         $this->seedPlaceTags();
         $this->seedReviews($faker);
@@ -425,8 +426,19 @@ class KulinerSeeder extends Seeder
             ],
         ];
 
+        $categoryImages = [
+            1 => 'angkringan.svg',
+            2 => 'warung_makan.svg',
+            3 => 'kedai_kopi.svg',
+            4 => 'jajanan.svg',
+            5 => 'rumah_makan.svg',
+            6 => 'cafe_resto.svg',
+        ];
+
         $placeModel = model('App\Models\PlaceModel');
         foreach ($places as $place) {
+            $catId = $place['category_id'];
+            $place['image'] = $categoryImages[$catId] ?? null;
             $placeModel->skipValidation(true)->insert($place);
         }
     }
@@ -621,5 +633,48 @@ class KulinerSeeder extends Seeder
         ];
 
         $this->db->table('notifications')->insertBatch($notifications);
+    }
+
+    /**
+     * Generate dummy SVG images for each category.
+     */
+    private function generateDummyImages(): void
+    {
+        $dummyImages = [
+            ['filename' => 'angkringan.svg',    'text' => 'Angkringan',        'color' => '#8B5A2B'],
+            ['filename' => 'warung_makan.svg',  'text' => 'Warung Makan',      'color' => '#2E8B57'],
+            ['filename' => 'kedai_kopi.svg',    'text' => 'Kedai Kopi',        'color' => '#5C4033'],
+            ['filename' => 'jajanan.svg',       'text' => 'Jajanan Kaki Lima',  'color' => '#DB7093'],
+            ['filename' => 'rumah_makan.svg',   'text' => 'Rumah Makan',       'color' => '#4682B4'],
+            ['filename' => 'cafe_resto.svg',    'text' => 'Cafe & Resto',      'color' => '#6A5ACD'],
+        ];
+
+        foreach ($dummyImages as $img) {
+            $this->createDummySvg($img['filename'], $img['text'], $img['color']);
+        }
+    }
+
+    /**
+     * Helper to create a dummy SVG vector image.
+     */
+    private function createDummySvg(string $filename, string $text, string $hexBgColor): void
+    {
+        $uploadPath = WRITEPATH . 'uploads/';
+        if (! is_dir($uploadPath)) {
+            mkdir($uploadPath, 0777, true);
+        }
+        $path = $uploadPath . $filename;
+        if (file_exists($path)) {
+            return;
+        }
+
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" width="100%" height="100%">' . "\n" .
+               '  <rect width="400" height="300" fill="' . $hexBgColor . '" rx="12"/>' . "\n" .
+               '  <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="800" fill="#ffffff">' . "\n" .
+               '    ' . htmlspecialchars($text) . "\n" .
+               '  </text>' . "\n" .
+               '</svg>';
+
+        file_put_contents($path, $svg);
     }
 }

@@ -13,6 +13,8 @@ CREATE TABLE IF NOT EXISTS `users` (
   `full_name` VARCHAR(100) NOT NULL,
   `role` ENUM('admin','contributor') NOT NULL DEFAULT 'contributor',
   `avatar` VARCHAR(255) DEFAULT NULL,
+  `api_token` VARCHAR(255) DEFAULT NULL,
+  `api_token_expires_at` DATETIME DEFAULT NULL,
   `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
   `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`)

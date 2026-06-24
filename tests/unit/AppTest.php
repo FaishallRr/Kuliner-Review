@@ -39,11 +39,12 @@ class AppTest extends CIUnitTestCase
      */
     private function loginAsContributor(): void
     {
-        session()->set([
+        $this->withSession([
             'isLoggedIn' => true,
             'user_id'    => 2,
             'username'   => 'budi_s',
             'role'       => 'contributor',
+            'full_name'  => 'Budi Santoso',
         ]);
     }
 
@@ -52,11 +53,12 @@ class AppTest extends CIUnitTestCase
      */
     private function loginAsAdmin(): void
     {
-        session()->set([
+        $this->withSession([
             'isLoggedIn' => true,
             'user_id'    => 1,
             'username'   => 'admin',
             'role'       => 'admin',
+            'full_name'  => 'Admin',
         ]);
     }
 

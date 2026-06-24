@@ -279,19 +279,25 @@ class PlaceController extends BaseController
 
         $file->move($uploadPath, $newName);
 
-        $imageService = \Config\Services::image();
-        $sourcePath = $uploadPath . '/' . $newName;
+        if (extension_loaded('gd') || extension_loaded('imagick')) {
+            try {
+                $imageService = \Config\Services::image();
+                $sourcePath = $uploadPath . '/' . $newName;
 
-        $imageService->withFile($sourcePath)
-            ->resize(800, 800, true, 'height')
-            ->save($sourcePath);
+                $imageService->withFile($sourcePath)
+                    ->resize(800, 800, true, 'height')
+                    ->save($sourcePath);
+            } catch (\Exception $e) {
+                log_message('warning', 'Failed to resize image: ' . $e->getMessage());
+            }
+        }
 
         return $newName;
     }
 
     /**
      * Endpoint AJAX untuk geocoding Nominatim.
-     * Menerima alamat, mengembalikan koordinat lat/lng.
+     * Menerima alamat, mengembalikan koordinat lat/lng (dengan cache 30 hari).
      */
     public function geocode()
     {
@@ -301,34 +307,55 @@ class PlaceController extends BaseController
             return $this->response->setJSON(['error' => 'Alamat tidak boleh kosong'])->setStatusCode(400);
         }
 
-        $client = \Config\Services::curlrequest();
-        $response = $client->get('https://nominatim.openstreetmap.org/search', [
-            'query' => [
-                'q'              => $address,
-                'format'         => 'json',
-                'limit'          => 1,
-                'countrycodes'   => 'id',
-            ],
-            'headers' => [
-                'User-Agent' => 'KulinerReview/1.0 (kuliner-review-app)',
-            ],
-        ]);
-
-        $data = json_decode($response->getBody(), true);
-
-        if (empty($data)) {
-            return $this->response->setJSON([
-                'success' => false,
-                'message' => 'Koordinat tidak ditemukan untuk alamat tersebut.',
-            ]);
+        // Caching key berdasarkan MD5 dari alamat
+        $cacheKey = 'geocode_' . md5(strtolower(trim($address)));
+        if ($cachedResult = cache($cacheKey)) {
+            return $this->response->setJSON($cachedResult);
         }
 
-        return $this->response->setJSON([
-            'success'   => true,
-            'latitude'  => $data[0]['lat'],
-            'longitude' => $data[0]['lon'],
-            'display_name' => $data[0]['display_name'],
-        ]);
+        try {
+            $client = \Config\Services::curlrequest();
+            $response = $client->get('https://nominatim.openstreetmap.org/search', [
+                'query' => [
+                    'q'            => $address,
+                    'format'       => 'json',
+                    'limit'        => 1,
+                    'countrycodes' => 'id',
+                    'viewbox'      => '110.30,-6.90,110.50,-7.08', // Prioritaskan area Semarang
+                ],
+                'headers' => [
+                    'User-Agent' => 'KulinerReview/1.0 (kuliner-review-app)',
+                ],
+                'timeout' => 5, // batasi waktu tunggu agar tidak hang
+            ]);
+
+            $data = json_decode($response->getBody(), true);
+
+            if (empty($data)) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Koordinat tidak ditemukan untuk alamat tersebut.',
+                ]);
+            }
+
+            $result = [
+                'success'      => true,
+                'latitude'     => $data[0]['lat'],
+                'longitude'    => $data[0]['lon'],
+                'display_name' => $data[0]['display_name'],
+            ];
+
+            // Simpan ke cache selama 30 hari
+            cache()->save($cacheKey, $result, 30 * DAY);
+
+            return $this->response->setJSON($result);
+
+        } catch (\Exception $e) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Gagal menghubungi layanan geocoding: ' . $e->getMessage(),
+            ])->setStatusCode(502);
+        }
     }
 
     /**

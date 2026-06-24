@@ -332,12 +332,18 @@ class PlaceController extends BaseController
 
         $file->move($uploadPath, $newName);
 
-        $imageService = \Config\Services::image();
-        $sourcePath = $uploadPath . '/' . $newName;
+        if (extension_loaded('gd') || extension_loaded('imagick')) {
+            try {
+                $imageService = \Config\Services::image();
+                $sourcePath = $uploadPath . '/' . $newName;
 
-        $imageService->withFile($sourcePath)
-            ->resize(800, 800, true, 'height')
-            ->save($sourcePath);
+                $imageService->withFile($sourcePath)
+                    ->resize(800, 800, true, 'height')
+                    ->save($sourcePath);
+            } catch (\Exception $e) {
+                log_message('warning', 'Failed to resize image: ' . $e->getMessage());
+            }
+        }
 
         return $newName;
     }

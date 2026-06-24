@@ -9,10 +9,18 @@ class AddApiTokenExpiryToUsers extends Migration
     public function up(): void
     {
         $fields = [
+            'api_token' => [
+                'type'       => 'VARCHAR',
+                'constraint' => 255,
+                'null'       => true,
+                'default'    => null,
+                'after'      => 'avatar',
+            ],
             'api_token_expires_at' => [
-                'type' => 'DATETIME',
-                'null' => true,
+                'type'    => 'DATETIME',
+                'null'    => true,
                 'default' => null,
+                'after'   => 'api_token',
             ],
         ];
 
@@ -21,6 +29,6 @@ class AddApiTokenExpiryToUsers extends Migration
 
     public function down(): void
     {
-        $this->forge->dropColumn('users', 'api_token_expires_at');
+        $this->forge->dropColumn('users', ['api_token', 'api_token_expires_at']);
     }
 }
