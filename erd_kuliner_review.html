@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ERD - Kuliner Review</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #1a1a2e;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    overflow: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+    padding: 20px;
+  }
+  h1 {
+    color: #e0e0e0;
+    margin: 20px 0 10px;
+    font-size: 28px;
+    letter-spacing: 1px;
+  }
+  .subtitle {
+    color: #888;
+    margin-bottom: 20px;
+    font-size: 14px;
+  }
+  .controls {
+    margin-bottom: 15px;
+    display: flex;
+    gap: 10px;
+  }
+  .controls button {
+    padding: 8px 18px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    background: #4361ee;
+    color: #fff;
+    transition: background 0.2s;
+  }
+  .controls button:hover { background: #3a56d4; }
+  svg {
+    background: #f5f5f5;
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  }
+</style>
+</head>
+<body>
+<h1>ERD — kuliner_review</h1>
+<p class="subtitle">Chen Notation • Entity-Relationship Diagram</p>
+<div class="controls">
+  <button onclick="downloadSVG()">⬇ Download SVG</button>
+  <button onclick="downloadPNG()">⬇ Download PNG</button>
+</div>
+<svg id="erd" xmlns="http://www.w3.org/2000/svg"></svg>
+
+<script>
+const SVG_NS = "http://www.w3.org/2000/svg";
+const svg = document.getElementById("erd");
+
+// ── Config ──
+const ENTITY_COLOR = "#4285F4";
+const ENTITY_TEXT = "#fff";
+const REL_COLOR = "#333";
+const REL_TEXT = "#fff";
+const ATTR_COLOR = "#34A853";
+const ATTR_TEXT = "#fff";
+const PK_COLOR = "#FBBC05";
+const PK_TEXT = "#333";
+const FK_COLOR = "#EA4335";
+const FK_TEXT = "#fff";
+const LINE_COLOR = "#555";
+const CANVAS_W = 2400;
+const CANVAS_H = 2200;
+
+svg.setAttribute("width", CANVAS_W);
+svg.setAttribute("height", CANVAS_H);
+svg.setAttribute("viewBox", `0 0 ${CANVAS_W} ${CANVAS_H}`);
+
+// ── Helpers ──
+function createEl(tag, attrs) {
+  const el = document.createElementNS(SVG_NS, tag);
+  for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+  return el;
+}
+
+function drawLine(x1, y1, x2, y2) {
+  svg.appendChild(createEl("line", { x1, y1, x2, y2, stroke: LINE_COLOR, "stroke-width": 1.5 }));
+}
+
+function drawEntity(cx, cy, label) {
+  const w = 150, h = 44, rx = 6;
+  const g = createEl("g", {});
+  g.appendChild(createEl("rect", {
+    x: cx - w/2, y: cy - h/2, width: w, height: h, rx, fill: ENTITY_COLOR, stroke: "#2a5db0", "stroke-width": 2
+  }));
+  const t = createEl("text", {
+    x: cx, y: cy + 5, "text-anchor": "middle", fill: ENTITY_TEXT, "font-size": 16, "font-weight": "bold"
+  });
+  t.textContent = label;
+  g.appendChild(t);
+  svg.appendChild(g);
+  return { x: cx, y: cy, w, h };
+}
+
+function drawDiamond(cx, cy, label) {
+  const s = 42;
+  const points = `${cx},${cy - s} ${cx + s * 1.3},${cy} ${cx},${cy + s} ${cx - s * 1.3},${cy}`;
+  const g = createEl("g", {});
+  g.appendChild(createEl("polygon", {
+    points, fill: REL_COLOR, stroke: "#111", "stroke-width": 2
+  }));
+  const t = createEl("text", {
+    x: cx, y: cy + 5, "text-anchor": "middle", fill: REL_TEXT, "font-size": 12, "font-weight": "bold"
+  });
+  t.textContent = label;
+  g.appendChild(t);
+  svg.appendChild(g);
+  return { x: cx, y: cy, s };
+}
+
+function drawAttr(cx, cy, label, type) {
+  const rx = 65, ry = 22;
+  let fill = ATTR_COLOR, textFill = ATTR_TEXT, underline = false;
+  if (type === "pk") { fill = PK_COLOR; textFill = PK_TEXT; underline = true; }
+  else if (type === "fk") { fill = FK_COLOR; textFill = FK_TEXT; }
+
+  const g = createEl("g", {});
+  g.appendChild(createEl("ellipse", {
+    cx, cy, rx, ry, fill, stroke: "#2a7d3f", "stroke-width": 1.5
+  }));
+  const t = createEl("text", {
+    x: cx, y: cy + 4, "text-anchor": "middle", fill: textFill, "font-size": 11, "font-weight": "500"
+  });
+  t.textContent = label;
+  if (underline) t.setAttribute("text-decoration", "underline");
+  g.appendChild(t);
+  svg.appendChild(g);
+  return { x: cx, y: cy };
+}
+
+function drawAttrsAround(entityCx, entityCy, attrs, startAngle, spread, radius) {
+  const n = attrs.length;
+  const angleStep = spread / Math.max(n - 1, 1);
+  const start = startAngle - spread / 2;
+  attrs.forEach((attr, i) => {
+    const angle = (start + angleStep * i) * Math.PI / 180;
+    const ax = entityCx + radius * Math.cos(angle);
+    const ay = entityCy + radius * Math.sin(angle);
+    drawLine(entityCx, entityCy, ax, ay);
+    drawAttr(ax, ay, attr.name, attr.type);
+  });
+}
+
+function drawCardinality(x1, y1, x2, y2, labelStart, labelEnd) {
+  const dx = x2 - x1, dy = y2 - y1;
+  const len = Math.sqrt(dx*dx + dy*dy);
+  const nx = dx/len, ny = dy/len;
+  const off = 20;
+  if (labelStart) {
+    const t = createEl("text", {
+      x: x1 + nx * off - ny * 12, y: y1 + ny * off + nx * 12,
+      "text-anchor": "middle", fill: "#333", "font-size": 13, "font-weight": "bold"
+    });
+    t.textContent = labelStart;
+    svg.appendChild(t);
+  }
+  if (labelEnd) {
+    const t = createEl("text", {
+      x: x2 - nx * off - ny * 12, y: y2 - ny * off + nx * 12,
+      "text-anchor": "middle", fill: "#333", "font-size": 13, "font-weight": "bold"
+    });
+    t.textContent = labelEnd;
+    svg.appendChild(t);
+  }
+}
+
+// ── Legend ──
+function drawLegend() {
+  const lx = 40, ly = 40;
+  const g = createEl("g", {});
+  g.appendChild(createEl("rect", { x: lx, y: ly, width: 240, height: 170, rx: 8, fill: "#fff", stroke: "#ccc", "stroke-width": 1 }));
+  const title = createEl("text", { x: lx + 120, y: ly + 24, "text-anchor": "middle", fill: "#333", "font-size": 14, "font-weight": "bold" });
+  title.textContent = "LEGENDA";
+  g.appendChild(title);
+
+  // Entity
+  g.appendChild(createEl("rect", { x: lx+15, y: ly+38, width: 40, height: 20, rx: 3, fill: ENTITY_COLOR }));
+  const t1 = createEl("text", { x: lx+70, y: ly+53, fill: "#333", "font-size": 12 }); t1.textContent = "Entitas"; g.appendChild(t1);
+
+  // Diamond
+  const dy = ly + 75;
+  g.appendChild(createEl("polygon", { points: `${lx+35},${dy-12} ${lx+50},${dy} ${lx+35},${dy+12} ${lx+20},${dy}`, fill: REL_COLOR }));
+  const t2 = createEl("text", { x: lx+70, y: dy+5, fill: "#333", "font-size": 12 }); t2.textContent = "Relasi"; g.appendChild(t2);
+
+  // PK
+  g.appendChild(createEl("ellipse", { cx: lx+35, cy: ly+103, rx: 22, ry: 12, fill: PK_COLOR }));
+  const t3 = createEl("text", { x: lx+70, y: ly+107, fill: "#333", "font-size": 12 }); t3.textContent = "Primary Key"; g.appendChild(t3);
+
+  // FK
+  g.appendChild(createEl("ellipse", { cx: lx+35, cy: ly+130, rx: 22, ry: 12, fill: FK_COLOR }));
+  const t4 = createEl("text", { x: lx+70, y: ly+134, fill: "#333", "font-size": 12 }); t4.textContent = "Foreign Key"; g.appendChild(t4);
+
+  // Attr
+  g.appendChild(createEl("ellipse", { cx: lx+35, cy: ly+157, rx: 22, ry: 12, fill: ATTR_COLOR }));
+  const t5 = createEl("text", { x: lx+70, y: ly+161, fill: "#333", "font-size": 12 }); t5.textContent = "Atribut"; g.appendChild(t5);
+
+  svg.appendChild(g);
+}
+
+// ════════════════════════════════════════
+//  LAYOUT — Entity positions
+// ════════════════════════════════════════
+
+const entities = {
+  users:         { x: 400,  y: 400 },
+  categories:    { x: 1200, y: 180 },
+  tags:          { x: 2000, y: 400 },
+  places:        { x: 1200, y: 600 },
+  reviews:       { x: 400,  y: 1050 },
+  favorites:     { x: 1200, y: 1150 },
+  notifications: { x: 2000, y: 1050 },
+  place_tags:    { x: 2000, y: 750 },
+};
+
+const rels = {
+  creates:     { x: 800,  y: 500 },
+  classifies:  { x: 1200, y: 390 },
+  has_tag:     { x: 1600, y: 680 },
+  writes:      { x: 400,  y: 730 },
+  reviewed_at: { x: 800,  y: 900 },
+  saves:       { x: 800,  y: 1150 },
+  bookmarked:  { x: 1200, y: 900 },
+  receives:    { x: 1200, y: 1450 },
+};
+
+// ── Draw Lines (relationships) ──
+
+// users --creates-- places
+drawLine(entities.users.x, entities.users.y, rels.creates.x, rels.creates.y);
+drawLine(rels.creates.x, rels.creates.y, entities.places.x, entities.places.y);
+
+// categories --classifies-- places
+drawLine(entities.categories.x, entities.categories.y, rels.classifies.x, rels.classifies.y);
+drawLine(rels.classifies.x, rels.classifies.y, entities.places.x, entities.places.y);
+
+// places --has_tag-- place_tags
+drawLine(entities.places.x, entities.places.y, rels.has_tag.x, rels.has_tag.y);
+drawLine(rels.has_tag.x, rels.has_tag.y, entities.place_tags.x, entities.place_tags.y);
+
+// tags -- place_tags
+drawLine(entities.tags.x, entities.tags.y, entities.place_tags.x, entities.place_tags.y);
+
+// users --writes-- reviews
+drawLine(entities.users.x, entities.users.y, rels.writes.x, rels.writes.y);
+drawLine(rels.writes.x, rels.writes.y, entities.reviews.x, entities.reviews.y);
+
+// places --reviewed_at-- reviews
+drawLine(entities.places.x, entities.places.y, rels.reviewed_at.x, rels.reviewed_at.y);
+drawLine(rels.reviewed_at.x, rels.reviewed_at.y, entities.reviews.x, entities.reviews.y);
+
+// users --saves-- favorites
+drawLine(entities.users.x, entities.users.y, rels.saves.x, rels.saves.y);
+drawLine(rels.saves.x, rels.saves.y, entities.favorites.x, entities.favorites.y);
+
+// places --bookmarked-- favorites
+drawLine(entities.places.x, entities.places.y, rels.bookmarked.x, rels.bookmarked.y);
+drawLine(rels.bookmarked.x, rels.bookmarked.y, entities.favorites.x, entities.favorites.y);
+
+// users --receives-- notifications
+drawLine(entities.users.x, entities.users.y, rels.receives.x, rels.receives.y);
+drawLine(rels.receives.x, rels.receives.y, entities.notifications.x, entities.notifications.y);
+
+// ── Draw Cardinalities ──
+drawCardinality(entities.users.x, entities.users.y, rels.creates.x, rels.creates.y, "1", "");
+drawCardinality(rels.creates.x, rels.creates.y, entities.places.x, entities.places.y, "", "N");
+
+drawCardinality(entities.categories.x, entities.categories.y, rels.classifies.x, rels.classifies.y, "1", "");
+drawCardinality(rels.classifies.x, rels.classifies.y, entities.places.x, entities.places.y, "", "N");
+
+drawCardinality(entities.places.x, entities.places.y, rels.has_tag.x, rels.has_tag.y, "N", "");
+drawCardinality(rels.has_tag.x, rels.has_tag.y, entities.place_tags.x, entities.place_tags.y, "", "M");
+
+drawCardinality(entities.users.x, entities.users.y, rels.writes.x, rels.writes.y, "1", "");
+drawCardinality(rels.writes.x, rels.writes.y, entities.reviews.x, entities.reviews.y, "", "N");
+
+drawCardinality(entities.places.x, entities.places.y, rels.reviewed_at.x, rels.reviewed_at.y, "1", "");
+drawCardinality(rels.reviewed_at.x, rels.reviewed_at.y, entities.reviews.x, entities.reviews.y, "", "N");
+
+drawCardinality(entities.users.x, entities.users.y, rels.saves.x, rels.saves.y, "1", "");
+drawCardinality(rels.saves.x, rels.saves.y, entities.favorites.x, entities.favorites.y, "", "N");
+
+drawCardinality(entities.places.x, entities.places.y, rels.bookmarked.x, rels.bookmarked.y, "1", "");
+drawCardinality(rels.bookmarked.x, rels.bookmarked.y, entities.favorites.x, entities.favorites.y, "", "N");
+
+drawCardinality(entities.users.x, entities.users.y, rels.receives.x, rels.receives.y, "1", "");
+drawCardinality(rels.receives.x, rels.receives.y, entities.notifications.x, entities.notifications.y, "", "N");
+
+// ── Draw Entities ──
+for (const [name, pos] of Object.entries(entities)) {
+  drawEntity(pos.x, pos.y, name);
+}
+
+// ── Draw Diamonds ──
+drawDiamond(rels.creates.x, rels.creates.y, "Creates");
+drawDiamond(rels.classifies.x, rels.classifies.y, "Classifies");
+drawDiamond(rels.has_tag.x, rels.has_tag.y, "Has Tag");
+drawDiamond(rels.writes.x, rels.writes.y, "Writes");
+drawDiamond(rels.reviewed_at.x, rels.reviewed_at.y, "Reviewed");
+drawDiamond(rels.saves.x, rels.saves.y, "Saves");
+drawDiamond(rels.bookmarked.x, rels.bookmarked.y, "Bookmarked");
+drawDiamond(rels.receives.x, rels.receives.y, "Receives");
+
+// ── Draw Attributes ──
+
+// USERS
+drawAttrsAround(entities.users.x, entities.users.y, [
+  { name: "id", type: "pk" },
+  { name: "username", type: "" },
+  { name: "email", type: "" },
+  { name: "password", type: "" },
+  { name: "full_name", type: "" },
+  { name: "role", type: "" },
+  { name: "avatar", type: "" },
+], 270, 160, 150);
+
+// CATEGORIES
+drawAttrsAround(entities.categories.x, entities.categories.y, [
+  { name: "id", type: "pk" },
+  { name: "name", type: "" },
+  { name: "slug", type: "" },
+  { name: "description", type: "" },
+], 270, 120, 130);
+
+// TAGS
+drawAttrsAround(entities.tags.x, entities.tags.y, [
+  { name: "id", type: "pk" },
+  { name: "name", type: "" },
+  { name: "slug", type: "" },
+], 270, 80, 130);
+
+// PLACES
+drawAttrsAround(entities.places.x, entities.places.y, [
+  { name: "id", type: "pk" },
+  { name: "user_id", type: "fk" },
+  { name: "category_id", type: "fk" },
+  { name: "name", type: "" },
+  { name: "slug", type: "" },
+  { name: "description", type: "" },
+  { name: "address", type: "" },
+  { name: "latitude", type: "" },
+  { name: "longitude", type: "" },
+  { name: "image", type: "" },
+  { name: "status", type: "" },
+  { name: "rejection_note", type: "" },
+  { name: "is_closed", type: "" },
+], 90, 70, 160);
+
+// REVIEWS
+drawAttrsAround(entities.reviews.x, entities.reviews.y, [
+  { name: "id", type: "pk" },
+  { name: "user_id", type: "fk" },
+  { name: "place_id", type: "fk" },
+  { name: "rating", type: "" },
+  { name: "comment", type: "" },
+], 225, 120, 130);
+
+// FAVORITES
+drawAttrsAround(entities.favorites.x, entities.favorites.y, [
+  { name: "id", type: "pk" },
+  { name: "user_id", type: "fk" },
+  { name: "place_id", type: "fk" },
+], 270, 60, 130);
+
+// NOTIFICATIONS
+drawAttrsAround(entities.notifications.x, entities.notifications.y, [
+  { name: "id", type: "pk" },
+  { name: "user_id", type: "fk" },
+  { name: "title", type: "" },
+  { name: "message", type: "" },
+  { name: "is_read", type: "" },
+], 330, 120, 130);
+
+// PLACE_TAGS
+drawAttrsAround(entities.place_tags.x, entities.place_tags.y, [
+  { name: "place_id", type: "pk" },
+  { name: "tag_id", type: "pk" },
+], 0, 60, 120);
+
+// ── Legend ──
+drawLegend();
+
+// ── Download functions ──
+function downloadSVG() {
+  const data = new XMLSerializer().serializeToString(svg);
+  const blob = new Blob([data], { type: "image/svg+xml" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "erd_kuliner_review.svg";
+  a.click();
+}
+
+function downloadPNG() {
+  const data = new XMLSerializer().serializeToString(svg);
+  const canvas = document.createElement("canvas");
+  canvas.width = CANVAS_W * 2;
+  canvas.height = CANVAS_H * 2;
+  const ctx = canvas.getContext("2d");
+  ctx.scale(2, 2);
+  const img = new Image();
+  img.onload = () => {
+    ctx.fillStyle = "#f5f5f5";
+    ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+    ctx.drawImage(img, 0, 0, CANVAS_W, CANVAS_H);
+    const a = document.createElement("a");
+    a.href = canvas.toDataURL("image/png");
+    a.download = "erd_kuliner_review.png";
+    a.click();
+  };
+  img.src = "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(data)));
+}
+</script>
+</body>
+</html>

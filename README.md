@@ -1,69 +1,218 @@
-# CodeIgniter 4 Application Starter
+# KulinerReview - Platform Kuliner Sekitar Kampus UDINUS
 
-## What is CodeIgniter?
+> **Pemrograman Web Lanjut — UTS Komponen 1-4**  
+> Universitas Dian Nuswantoro (UDINUS) Semarang
 
-CodeIgniter is a PHP full-stack web framework that is light, fast, flexible and secure.
-More information can be found at the [official site](https://codeigniter.com).
+Platform berbasis web untuk menemukan, menambahkan, dan mengulas tempat makan/jajanan di sekitar kampus. Dilengkapi dengan geocoding otomatis (OpenStreetMap Nominatim), filter kategori & tag, sistem rating, dan peta interaktif (Leaflet.js).
 
-This repository holds a composer-installable app starter.
-It has been built from the
-[development repository](https://github.com/codeigniter4/CodeIgniter4).
+---
 
-More information about the plans for version 4 can be found in [CodeIgniter 4](https://forum.codeigniter.com/forumdisplay.php?fid=28) on the forums.
+## Daftar Isi
 
-You can read the [user guide](https://codeigniter.com/user_guide/)
-corresponding to the latest version of the framework.
+1. [Fitur Utama](#fitur-utama)
+2. [Tech Stack](#tech-stack)
+3. [Cara Instalasi](#cara-instalasi)
+4. [Akun Demo](#akun-demo)
+5. [Screenshot Fitur Utama](#screenshot-fitur-utama)
+6. [Struktur Database](#struktur-database)
+7. [API Endpoint](#api-endpoint)
+8. [Lisensi](#lisensi)
 
-## Installation & updates
+---
 
-`composer create-project codeigniter4/appstarter` then `composer update` whenever
-there is a new release of the framework.
+## Fitur Utama
 
-When updating, check the release notes to see if there are any changes you might need to apply
-to your `app` folder. The affected files can be copied or merged from
-`vendor/codeigniter4/framework/app`.
+### Peran Admin
+- ✅ Kelola kategori (angkringan, kafe, street food, dll)
+- ✅ Kelola tag (halal, murah, AC, WiFi,parkir, dll)
+- ✅ Moderasi tempat kuliner (approve/reject submission)
+- ✅ Moderasi review (hapus review tidak pantas)
+- ✅ Dashboard dengan statistik
+- ✅ CRUD penuh data kuliner
 
-## Setup
+### Peran Contributor (User Login)
+- ✅ Submit tempat makan baru
+- ✅ Geocoding otomatis via Nominatim API
+- ✅ Tulis review dan rating (1-5 bintang)
+- ✅ Edit review sendiri (dalam 24 jam)
+- ✅ Upload foto (max 3 per tempat, auto-resize 800px)
+- ✅ Simpan favorit
+- ✅ Tandai tempat sebagai "tutup permanen"
 
-Copy `env` to `.env` and tailor for your app, specifically the baseURL
-and any database settings.
+### Pengunjung (Tanpa Login)
+- ✅ Browse daftar kuliner dengan filter
+- ✅ Lihat detail, foto, peta lokasi (Leaflet)
+- ✅ Baca review
+- ✅ Cari berdasarkan nama/alamat
 
-## Important Change with index.php
+### Fitur Sistem
+- ✅ Integrasi Nominatim untuk konversi alamat → lat/lng
+- ✅ Peta interaktif Leaflet.js per tempat
+- ✅ Perhitungan rating otomatis
+- ✅ API: `GET /api/kuliner?lat=x&lng=y&radius=km`
+- ✅ Pagination dan pencarian
 
-`index.php` is no longer in the root of the project! It has been moved inside the *public* folder,
-for better security and separation of components.
+---
 
-This means that you should configure your web server to "point" to your project's *public* folder, and
-not to the project root. A better practice would be to configure a virtual host to point there. A poor practice would be to point your web server to the project root and expect to enter *public/...*, as the rest of your logic and the
-framework are exposed.
+## Tech Stack
 
-**Please** read the user guide for a better explanation of how CI4 works!
+- **Framework**: CodeIgniter 4 (PHP 8.2+)
+- **Database**: MySQL
+- **Geocoding API**: OpenStreetMap Nominatim (free, unlimited)
+- **Map Display**: Leaflet.js + OpenStreetMap tiles
+- **Image Processing**: CodeIgniter 4 Image Library
+- **Authentication**: Session-based dengan Role Filter
 
-## Repository Management
+---
 
-We use GitHub issues, in our main repository, to track **BUGS** and to track approved **DEVELOPMENT** work packages.
-We use our [forum](http://forum.codeigniter.com) to provide SUPPORT and to discuss
-FEATURE REQUESTS.
+## Cara Instalasi
 
-This repository is a "distribution" one, built by our release preparation script.
-Problems with it can be raised on our forum, or as issues in the main repository.
+### Prerequisites
+- PHP 8.2+ dengan ekstensi: `intl`, `mysqli`, `pdo_mysql`, `gd`
+- MySQL Server
+- Composer
 
-## Server Requirements
+### Langkah Instalasi
 
-PHP version 8.2 or higher is required, with the following extensions installed:
+```bash
+# 1. Clone repository
+git clone <repository-url>
+cd kuliner-review
 
-- [intl](http://php.net/manual/en/intl.requirements.php)
-- [mbstring](http://php.net/manual/en/mbstring.installation.php)
+# 2. Install dependencies
+composer install
 
-> [!WARNING]
-> - The end of life date for PHP 7.4 was November 28, 2022.
-> - The end of life date for PHP 8.0 was November 26, 2023.
-> - The end of life date for PHP 8.1 was December 31, 2025.
-> - If you are still using below PHP 8.2, you should upgrade immediately.
-> - The end of life date for PHP 8.2 will be December 31, 2026.
+# 3. Buat database MySQL
+mysql -u root -e "CREATE DATABASE kuliner_review DEFAULT CHARSET utf8mb4 COLLATE utf8mb4_general_ci;"
 
-Additionally, make sure that the following extensions are enabled in your PHP:
+# 4. Copy .env
+cp .env.example .env
 
-- json (enabled by default - don't turn it off)
-- [mysqlnd](http://php.net/manual/en/mysqlnd.install.php) if you plan to use MySQL
-- [libcurl](http://php.net/manual/en/curl.requirements.php) if you plan to use the HTTP\CURLRequest library
+# 5. Edit konfigurasi database di .env
+# Sesuaikan database.default.username dan password
+
+# 6. Jalankan migration
+php spark migrate
+
+# 7. Jalankan seeder (data awal)
+php spark db:seed KulinerSeeder
+
+# 8. Jalankan server
+php spark serve
+```
+
+Aplikasi dapat diakses di: **http://localhost:8080**
+
+---
+
+## Akun Demo
+
+| Role | Email | Password |
+|------|-------|----------|
+| Admin | `admin@udinus.ac.id` | `admin123` |
+| Contributor | `budi@student.udinus.ac.id` | `contrib123` |
+| Contributor | `siti@student.udinus.ac.id` | `contrib123` |
+| Contributor | `rendi@student.udinus.ac.id` | `contrib123` |
+| Contributor | `dewi@student.udinus.ac.id` | `contrib123` |
+
+---
+
+## Screenshot Fitur Utama
+
+### 1. Halaman Utama (Beranda)
+Menampilkan daftar tempat kuliner dengan pencarian dan filter kategori.
+
+### 2. Detail Tempat
+Menampilkan informasi lengkap, foto, peta Leaflet, rating rata-rata, dan review.
+
+### 3. Form Submit Tempat
+Fitur geocoding otomatis via Nominatim - user input alamat → klik "Cari Koordinat" → dapat lat/lng otomatis.
+
+### 4. Dashboard Admin
+Statistik: total tempat, pending, approved, rejected, user, review, kategori, tag.
+
+### 5. Moderasi Tempat
+Admin dapat approve/reject submission dari contributor dengan notifikasi.
+
+---
+
+## Struktur Database
+
+### Relasi Tabel
+
+```
+users (id, username, email, password, full_name, role)
+    │
+    ├── places (user_id FK)
+    ├── reviews (user_id FK)
+    ├── favorites (user_id FK)
+    └── notifications (user_id FK)
+
+categories (id, name, slug, description)
+    │
+    └── places (category_id FK)
+
+tags (id, name, slug)
+    │
+    └── place_tags (tag_id FK) ←─── places (place_id FK)
+
+places (id, user_id FK, category_id FK, name, slug, description, 
+        address, latitude, longitude, image, status, is_closed)
+    │
+    ├── reviews (place_id FK)
+    ├── favorites (place_id FK)
+    └── place_tags (place_id FK)
+```
+
+### Migration List
+1. `001_CreateUsersTable`
+2. `002_CreateCategoriesTable`
+3. `003_CreateTagsTable`
+4. `004_CreatePlacesTable`
+5. `005_CreatePlaceTagsTable`
+6. `006_CreateReviewsTable`
+7. `007_CreateFavoritesTable`
+8. `008_CreateNotificationsTable`
+9. `009_AddIsClosedToPlaces`
+
+---
+
+## API Endpoint
+
+### GET /api/kuliner
+Mengambil daftar tempat kuliner terdekat berdasarkan koordinat.
+
+**Parameter:**
+- `lat` (required): Latitude
+- `lng` (required): Longitude
+- `radius` (optional): Radius dalam km (default: 10)
+
+**Response:**
+```json
+{
+  "success": true,
+  "count": 5,
+  "radius_km": 5,
+  "data": [
+    {
+      "id": 1,
+      "name": "Angkringan Pendopo",
+      "latitude": -6.9840,
+      "longitude": 110.4075,
+      "distance_km": 0.5,
+      ...
+    }
+  ]
+}
+```
+
+**Contoh Penggunaan:**
+```
+GET http://localhost:8080/api/kuliner?lat=-6.9840&lng=110.4075&radius=5
+```
+
+---
+
+##Lisensi
+
+MIT License - Universitas Dian Nuswantoro (UDINUS) Semarang
