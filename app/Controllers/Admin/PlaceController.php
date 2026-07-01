@@ -318,7 +318,7 @@ class PlaceController extends BaseController
             return null;
         }
 
-        $allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+        $allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
         if (! in_array($file->getMimeType(), $allowedTypes, true)) {
             return null;
         }

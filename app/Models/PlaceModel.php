@@ -46,8 +46,8 @@ class PlaceModel extends Model
         'slug'          => 'permit_empty|max_length[160]|is_unique[places.slug,id,{id}]',
         'description'   => 'permit_empty|max_length[1000]',
         'address'       => 'required|min_length[5]|max_length[255]',
-        'latitude'      => 'permit_empty|decimal',
-        'longitude'     => 'permit_empty|decimal',
+        'latitude'      => 'permit_empty|decimal|greater_than[-90]|less_than[90]',
+        'longitude'     => 'permit_empty|decimal|greater_than[-180]|less_than[180]',
         'image'         => 'permit_empty|max_length[255]',
         'status'        => 'permit_empty|in_list[pending,approved,rejected]',
         'rejection_note' => 'permit_empty|max_length[500]',
@@ -75,28 +75,43 @@ class PlaceModel extends Model
 
     /**
      * Generate slug dari nama tempat secara otomatis.
+     * Menangani duplikasi slug dengan menambahkan angka increment.
      */
     protected function createSlug(array $data): array
     {
         if (isset($data['data']['name']) && ! isset($data['data']['slug'])) {
-            $data['data']['slug'] = url_title(
-                $data['data']['name'],
-                '-',
-                true
-            );
+            $slug = url_title($data['data']['name'], '-', true);
+            $baseSlug = $slug;
+            $counter = 1;
+            $this->where('slug', $slug);
+            if (isset($data['id'])) {
+                $this->where('id !=', $data['id']);
+            }
+            while ($this->first()) {
+                $slug = $baseSlug . '-' . $counter;
+                $counter++;
+                $this->resetQuery();
+                $this->where('slug', $slug);
+                if (isset($data['id'])) {
+                    $this->where('id !=', $data['id']);
+                }
+            }
+            $this->resetQuery();
+            $data['data']['slug'] = $slug;
         }
 
         return $data;
     }
 
     /**
-     * Mengambil tempat kuliner yang sudah di-approve beserta relasi.
+     * Mengambil tempat kuliner yang sudah di-approve beserta relasi dan rating.
      */
     public function getApprovedWithRelations(): array
     {
-        return $this->select('places.*, categories.name AS category_name, users.full_name AS contributor_name')
+        return $this->select('places.*, categories.name AS category_name, users.full_name AS contributor_name, COALESCE(avg_ratings.avg_rating, 0) as avg_rating')
             ->join('categories', 'categories.id = places.category_id')
             ->join('users', 'users.id = places.user_id')
+            ->join('(SELECT place_id, AVG(rating) as avg_rating FROM reviews GROUP BY place_id) AS avg_ratings', 'avg_ratings.place_id = places.id', 'left')
             ->where('places.status', 'approved')
             ->orderBy('places.created_at', 'DESC')
             ->findAll();
@@ -148,9 +163,10 @@ class PlaceModel extends Model
      */
     public function getFilteredApproved(?int $tagId = null, ?int $minRating = null, ?int $categoryId = null, ?string $keyword = null): array
     {
-        $this->select('places.*, categories.name AS category_name, users.full_name AS contributor_name')
+        $this->select('places.*, categories.name AS category_name, users.full_name AS contributor_name, COALESCE(avg_ratings.avg_rating, 0) as avg_rating')
             ->join('categories', 'categories.id = places.category_id')
             ->join('users', 'users.id = places.user_id')
+            ->join('(SELECT place_id, AVG(rating) as avg_rating FROM reviews GROUP BY place_id) AS avg_ratings', 'avg_ratings.place_id = places.id', 'left')
             ->where('places.status', 'approved');
 
         if ($keyword) {
@@ -171,9 +187,7 @@ class PlaceModel extends Model
         }
 
         if ($minRating) {
-            $this->join('(SELECT place_id, AVG(rating) as avg_rating FROM reviews GROUP BY place_id) AS rating_sub', 'rating_sub.place_id = places.id', 'left')
-                ->having('rating_sub.avg_rating >=', $minRating)
-                ->orHaving('rating_sub.avg_rating IS NULL');
+            $this->where('avg_ratings.avg_rating >=', $minRating);
         }
 
         $this->groupBy('places.id')

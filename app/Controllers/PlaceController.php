@@ -31,9 +31,10 @@ class PlaceController extends BaseController
         $tagId = $this->request->getGet('tag');
         $minRating = $this->request->getGet('min_rating');
 
-        $query = $placeModel->select('places.*, categories.name AS category_name, users.full_name AS contributor_name')
+        $query = $placeModel->select('places.*, categories.name AS category_name, users.full_name AS contributor_name, COALESCE(avg_ratings.avg_rating, 0) as avg_rating')
             ->join('categories', 'categories.id = places.category_id')
             ->join('users', 'users.id = places.user_id')
+            ->join('(SELECT place_id, AVG(rating) as avg_rating FROM reviews GROUP BY place_id) AS avg_ratings', 'avg_ratings.place_id = places.id', 'left')
             ->where('places.status', 'approved');
 
         if ($keyword) {
@@ -54,8 +55,7 @@ class PlaceController extends BaseController
         }
 
         if ($minRating) {
-            $query->join('(SELECT place_id, AVG(rating) as avg_rating FROM reviews GROUP BY place_id) AS rating_sub', 'rating_sub.place_id = places.id', 'left')
-                ->where('rating_sub.avg_rating >=', (int) $minRating);
+            $query->where('avg_ratings.avg_rating >=', (int) $minRating);
         }
 
         $query->groupBy('places.id')
@@ -265,7 +265,7 @@ class PlaceController extends BaseController
             return null;
         }
 
-        $allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+        $allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
         if (! in_array($file->getMimeType(), $allowedTypes, true)) {
             return null;
         }

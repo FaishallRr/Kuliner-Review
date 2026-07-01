@@ -11,7 +11,7 @@ use CodeIgniter\Model;
 class PlaceTagModel extends Model
 {
     protected $table            = 'place_tags';
-    protected $primaryKey       = 'place_id';
+    protected $primaryKey       = '';
     protected $useAutoIncrement = false;
     protected $returnType       = 'array';
     protected $useSoftDeletes   = false;
